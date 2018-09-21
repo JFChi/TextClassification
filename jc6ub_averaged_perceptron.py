@@ -109,6 +109,7 @@ def main():
     epochs = 10
     steps = 0
     delta = np.zeros(trn_data.shape[1]*2)
+    m = np.zeros(trn_data.shape[1]*2)
     print('delta.shape', delta.shape)
     for epoch in range(epochs):
         print('In epoch %d:' % epoch)

@@ -1,61 +1,69 @@
+import nltk
 import numpy as np
-from sklearn.feature_extraction.text import CountVectorizer
+import collections
 
-def main():
-    # Load data
-    with open("data/trn.data.txt", 'r') as f:
-        trn_texts = f.read().splitlines() 
-    with open("data/trn.label.txt", 'r') as f:
-        trn_labels = f.read().splitlines()
-    print("Training data ...")
-    print(len(trn_texts), len(trn_labels))
 
-    with open("data/dev.data.txt", 'r') as f:
-        dev_texts = f.read().splitlines() 
-    with open("data/dev.label.txt", 'r') as f:
-        dev_labels = f.read().splitlines()
-    print("Development data ...")
-    print(len(dev_texts), len(dev_labels))
+def bag_of_word(vocabulary_size, input_texts, word_to_idx_dict):
+    trn_data_list = []
+    for i in range(len(input_texts)):
+        temp_vec = np.zeros(vocabulary_size)
+        words = nltk.wordpunct_tokenize(input_texts[i])
+        for word in words:
+            try:
+                temp_idx = word_to_idx_dict[word]
+                temp_vec[temp_idx] += 1
+            except KeyError:
+                pass
+        trn_data_list.append(temp_vec)
+    return trn_data_list
 
-    with open("data/tst.data.txt", 'r') as f:
-        tst_texts = f.read().splitlines()
-    print("Test data ...")
-    print(len(tst_texts))
+def to_lowercase(words):
+    """Convert all characters to lowercase from list of tokenized words"""
+    new_words = []
+    for word in words:
+        new_word = word.lower()
+        new_words.append(new_word)
+    return new_words
 
-    # vectorize
-    choice = 3
-    if choice == 1:
-        print("Preprocessing without any feature selection")
-        vectorizer = CountVectorizer(lowercase=False)
-        # vocab size 77166
-    elif choice == 2:
-        print("Lowercasing all the tokens")
-        vectorizer = CountVectorizer(lowercase=True)
-        # vocab size 60610
-    elif choice == 3:
-        print("Lowercasing and filtering out low-frequency words")
-        vectorizer = CountVectorizer(lowercase=True, min_df=2)
-        # vocab size 31218
-    elif choice == 4:
-        print("Lowercasing and filtering out low-frequency words, uni- and bi-gram")
-        vectorizer = CountVectorizer(lowercase=True, min_df=2, ngram_range=(1,2))
-        # vocab size 323167
-    elif choice == 5:
-        print("Uni- and bi-gram")
-        vectorizer = CountVectorizer(ngram_range=(1,2))
-        # vocab 1048596
-    elif choice == 6:
-        print("Lowercasing and filtering out high-frequency words")
-        vectorizer = CountVectorizer(lowercase=True, max_df=0.5)
-        # vocab size 60610
+def load_data(frequency_threshold=2):
+    trn_texts = open("data/trn.data.txt").read().strip().split("\n")
+    trn_labels = list(map(str, open("data/trn.label.txt").read().strip().split("\n")))
+    trn_size = len(trn_labels)
 
-    trn_data = vectorizer.fit_transform(trn_texts)
-    print(trn_data.shape)
-    print(type(trn_data))
-    print(trn_data[0])
-    print(trn_data[0].toarray().shape)
-    # for value in trn_data[0]:
-    #     print(value, type(value))
+    dev_texts = open("data/dev.data.txt").read().strip().split("\n")
+    dev_labels = list(map(str, open("data/dev.label.txt").read().strip().split("\n")))
+
+    tst_texts = open("data/tst.data.txt").read().strip().split("\n")
+
+    trn_texts = to_lowercase(trn_texts)
+    dev_texts = to_lowercase(dev_texts)
+    tst_texts = to_lowercase(tst_texts)
+    word_frequency = collections.defaultdict(int)
+
+    for i in range(trn_size):
+        words = nltk.wordpunct_tokenize(trn_texts[i])
+        for word in words:
+            word_frequency[word] += 1
+    # sort according to word frequency
+    word_frequency = sorted(word_frequency.items(), key=lambda kv: kv[1], reverse=False)
+
+    # eliminate low frequency word
+    idx = 0
+    word_to_idx = {}
+    for word, count in word_frequency:
+        if count >= frequency_threshold:
+            word_to_idx.update({word: idx})
+            idx = idx + 1
+    vocab_size = len(word_to_idx)
+    print('vocab_size: %d' % vocab_size)
+    trn_data_features = bag_of_word(vocab_size, trn_texts, word_to_idx)
+    dev_data_features = bag_of_word(vocab_size, dev_texts, word_to_idx)
+    tst_data_features = bag_of_word(vocab_size, tst_texts, word_to_idx)
+
+    return np.array(trn_data_features), trn_labels, np.array(dev_data_features), dev_labels, np.array(tst_data_features)
+
 
 if __name__ == '__main__':
-    main()
+    trn_data_features, trn_labels, dev_data_features, dev_labels, tst_data_features = load_data()
+    
+    print(trn_data_features.shape, len(trn_labels), dev_data_features.shape, len(dev_labels), tst_data_features.shape)
