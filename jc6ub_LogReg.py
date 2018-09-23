@@ -28,8 +28,11 @@ def main():
     # Load data
     trn_texts, trn_labels, dev_texts, dev_labels, tst_texts = load_data()
     # vectorize
-    choice = 4
-    if choice == 1:
+    choice = 0
+    if choice == 0:
+        print("Preprocessing in default setting")
+        vectorizer = CountVectorizer()
+    elif choice == 1:
         print("Preprocessing without any feature selection")
         vectorizer = CountVectorizer(lowercase=False)
         # vocab size 77166
@@ -60,8 +63,9 @@ def main():
     tst_data = vectorizer.transform(tst_texts)
     print('tst_data.shape', tst_data.shape)
     # train
-    lamda = 1e-4 # 1e-3, 1e-2, 1e-1, 1., 10., 100.
-    penalty = 'l2' # 'l1'
+    lamda = 1. # 1e-3, 1e-2, 1e-1, 1., 10., 100.
+    penalty = 'l1' # 'l1'
+    print('lambda:', lamda, ' penalty: ', penalty)
     classifier = LR(C=1./lamda, penalty=penalty)
     classifier.fit(trn_data, trn_labels)
     print("Training accuracy =", classifier.score(trn_data, trn_labels))
